@@ -29,7 +29,7 @@ app.MapGet("/api/second", () =>
         message = "This is the second API response",
         source = "Second API",
         description = "This response was generated from a button click",
-        randomNumber = new Random().Next(1, 1000)
+        randomNumber = Random.Shared.Next(1, 1000)
     };
     return Results.Json(response);
 });
