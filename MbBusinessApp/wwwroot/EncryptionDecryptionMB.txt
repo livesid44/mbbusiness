@@ -1,0 +1,129 @@
+package com.vis.bobmain.utils;
+
+import org.apache.commons.codec.binary.Base64;
+import javax.crypto.Cipher;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import java.security.Key;
+import java.security.SecureRandom;
+import java.security.Security;
+import java.security.spec.AlgorithmParameterSpec;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.SecretKey;
+import com.audium.server.session.DecisionElementData;
+import com.vis.bobmain.utils.AppUtils;
+
+import javax.crypto.Mac;
+public class EncryptionDecryptionMB {
+    private static final int GCM_IV_LENGTH = 12;   // 12 bytes IV
+    private static final int GCM_TAG_LENGTH = 16;  // 16 bytes tag (128 bits)
+
+    public static String encrypt(String cleartext, String _encKey) {
+
+		try {
+
+			Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+
+			byte[] clearTextbytes = cleartext.getBytes("UTF-8");
+
+			// final SecureRandom secureKeyRandomness = new SecureRandom();
+
+			// final KeyGenerator AES_keyInstance = KeyGenerator.getInstance("AES");
+
+			// AES_keyInstance.init(GCM_TAG_LENGTH * 8, secureKeyRandomness);
+
+			// final SecretKey secretKey = AES_keyInstance.generateKey();
+ 
+			byte[] secKey = _encKey.getBytes();
+
+			SecretKey secretKey = new SecretKeySpec(secKey, 0, secKey.length, "AES");
+
+			final Cipher AES_cipherInstance = Cipher.getInstance("AES/GCM/NoPadding");
+ 
+			byte[] IV = new byte[GCM_IV_LENGTH];
+
+			SecureRandom random = new SecureRandom();
+
+			random.nextBytes(IV);
+
+ 
+			GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, IV);
+
+			IvParameterSpec _iv = new IvParameterSpec(gcmParameterSpec.getIV());
+ 
+			AES_cipherInstance.init(Cipher.ENCRYPT_MODE, secretKey, _iv);
+
+			byte[] encryptedText = AES_cipherInstance.doFinal(clearTextbytes);
+
+			byte[] iv = AES_cipherInstance.getIV();
+
+			byte[] message = new byte[GCM_IV_LENGTH + clearTextbytes.length + 16];
+
+			System.arraycopy(iv, 0, message, 0, GCM_IV_LENGTH);
+
+			System.arraycopy(encryptedText, 0, message, GCM_IV_LENGTH, encryptedText.length);
+
+			String enc = new String(Base64.encodeBase64(message));
+
+			return enc;
+
+		} catch (Exception e) {
+
+			e.printStackTrace();
+
+		}
+
+		return null;
+
+	}
+ 
+    public static String decrypt(String base64Cipher, String keyStr) {
+        try {
+        	byte[] decoded = Base64.decodeBase64(base64Cipher);
+            byte[] iv = new byte[GCM_IV_LENGTH];
+            byte[] cipherText = new byte[decoded.length - GCM_IV_LENGTH];
+
+            System.arraycopy(decoded, 0, iv, 0, GCM_IV_LENGTH);
+            System.arraycopy(decoded, GCM_IV_LENGTH, cipherText, 0, cipherText.length);
+
+            SecretKey key = new SecretKeySpec(keyStr.getBytes("UTF-8"), "AES");
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv));
+
+            return new String(cipher.doFinal(cipherText), "UTF-8");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Decryption failed: " + e.getMessage();
+        }
+    }
+    public static String gethmac(String _msg, String _key) {
+		String hash = "";
+		try {
+//			System.out.println("The _msg" + _msg);
+//			System.out.println("The _key" + _key);
+			Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+			String secret = _key;
+			String message = _msg;
+			Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
+			SecretKeySpec secret_key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
+			sha256_HMAC.init(secret_key);
+			hash = toHexString((sha256_HMAC.doFinal(message.getBytes())));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return hash;
+	}
+    public static String toHexString(byte[] bytes) {
+        StringBuilder hexString = new StringBuilder();
+        for (int i = 0; i < bytes.length; i++) {
+            String hex = Integer.toHexString(0xFF & bytes[i]);
+            if (hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+        return hexString.toString().toLowerCase();
+    }
+}
