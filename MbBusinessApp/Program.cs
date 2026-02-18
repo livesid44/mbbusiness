@@ -109,6 +109,16 @@ app.MapGet("/api/mbblock", async (string? mobileNumber, string? callId, IHttpCli
                 }
             });
             statusCode = 200;
+            
+            // Return response with debug info for test mode
+            return Results.Ok(new
+            {
+                success = true,
+                request = requestPayload,
+                response = responseBody,
+                statusCode = statusCode,
+                originalPayload = jsonPayload // Show original payload only in test mode
+            });
         }
         else
         {
@@ -122,17 +132,16 @@ app.MapGet("/api/mbblock", async (string? mobileNumber, string? callId, IHttpCli
             var apiResponse = await httpClient.PostAsync(middlewareUrl, content);
             responseBody = await apiResponse.Content.ReadAsStringAsync();
             statusCode = (int)apiResponse.StatusCode;
+            
+            // Return response without sensitive debug info for production
+            return Results.Ok(new
+            {
+                success = true,
+                request = requestPayload,
+                response = responseBody,
+                statusCode = statusCode
+            });
         }
-
-        // Return the response
-        return Results.Ok(new
-        {
-            success = true,
-            request = requestPayload,
-            response = responseBody,
-            statusCode = statusCode,
-            originalPayload = jsonPayload // Show original unencrypted payload for verification
-        });
     }
     catch (Exception ex)
     {

@@ -208,8 +208,7 @@
             document.getElementById('callId').textContent = callId || 'Not provided';
             
             if (!mobileNumber || !callId) {
-                showStatus('Error: Mobile number and Call ID are required in query string', 'error');
-                showStatus('Example URL: ?mobileNumber=1234567890&callId=ABC123DEF456', 'error');
+                showStatus('Error: Mobile number and Call ID are required in query string. Example: ?mobileNumber=1234567890&callId=ABC123DEF456', 'error');
                 return;
             }
             

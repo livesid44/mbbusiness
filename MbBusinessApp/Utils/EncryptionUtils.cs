@@ -156,7 +156,7 @@ namespace MbBusinessApp.Utils
         /// <returns>Key with date appended</returns>
         public static string GetEncryptionKey(string baseKey)
         {
-            string currentDate = DateTime.Now.ToString("yyyyMMdd");
+            string currentDate = DateTime.UtcNow.ToString("yyyyMMdd");
             return baseKey + currentDate;
         }
     }
