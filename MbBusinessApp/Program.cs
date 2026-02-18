@@ -63,6 +63,9 @@ app.MapGet(mbBlockApiPath, async (string? mobileNumber, string? callId, IHttpCli
         string clientId = configuration["MBBlock:ClientId"] ?? "900001";
         string baseKey = configuration["MBBlock:EncryptionBaseKey"] ?? "MBBOB12#";
         string middlewareUrl = configuration["MBBlock:MiddlewareUrl"] ?? "http://10.255.234.21:2000/mb/mbBlockChk";
+        string tokenUrl = configuration["MBBlock:TokenUrl"] ?? "http://10.255.233.28:2000/token";
+        string username = configuration["MBBlock:Username"] ?? "test1";
+        string password = configuration["MBBlock:Password"] ?? "test1@123";
 
         // Step 1: Create the JSON payload with mobile number and channel code
         var payload = new
@@ -96,6 +99,7 @@ app.MapGet(mbBlockApiPath, async (string? mobileNumber, string? callId, IHttpCli
 
         string responseBody;
         int statusCode;
+        string? authToken = null;
 
         // Step 6: Call the middleware API (or use test mode)
         if (testMode == true)
@@ -131,8 +135,57 @@ app.MapGet(mbBlockApiPath, async (string? mobileNumber, string? callId, IHttpCli
             // Set timeout to 30 seconds
             httpClient.Timeout = TimeSpan.FromSeconds(30);
             
+            // Step 6a: Generate authentication token first
+            try
+            {
+                var tokenPayload = new
+                {
+                    username = username,
+                    password = password
+                };
+                var tokenJson = JsonSerializer.Serialize(tokenPayload);
+                var tokenContent = new StringContent(tokenJson, System.Text.Encoding.UTF8, "application/json");
+                
+                var tokenResponse = await httpClient.PostAsync(tokenUrl, tokenContent);
+                var tokenResponseBody = await tokenResponse.Content.ReadAsStringAsync();
+                
+                if (tokenResponse.IsSuccessStatusCode)
+                {
+                    // Parse token from response
+                    var tokenData = JsonSerializer.Deserialize<JsonElement>(tokenResponseBody);
+                    if (tokenData.TryGetProperty("token", out var tokenElement))
+                    {
+                        authToken = tokenElement.GetString();
+                    }
+                    else if (tokenData.TryGetProperty("access_token", out var accessTokenElement))
+                    {
+                        authToken = accessTokenElement.GetString();
+                    }
+                    
+                    Console.WriteLine($"Token generated successfully: {authToken?.Substring(0, Math.Min(20, authToken?.Length ?? 0))}...");
+                }
+                else
+                {
+                    Console.WriteLine($"Token generation failed with status: {tokenResponse.StatusCode}");
+                    Console.WriteLine($"Token response: {tokenResponseBody}");
+                }
+            }
+            catch (Exception tokenEx)
+            {
+                Console.WriteLine($"Token generation error: {tokenEx.Message}");
+                // Continue without token - the middleware might still work or return appropriate error
+            }
+            
+            // Step 6b: Call the MB Block API with token
             var jsonContent = JsonSerializer.Serialize(requestPayload);
             var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+            
+            // Add Authorization header if token was obtained
+            if (!string.IsNullOrEmpty(authToken))
+            {
+                httpClient.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authToken);
+            }
 
             var apiResponse = await httpClient.PostAsync(middlewareUrl, content);
             responseBody = await apiResponse.Content.ReadAsStringAsync();
@@ -144,7 +197,8 @@ app.MapGet(mbBlockApiPath, async (string? mobileNumber, string? callId, IHttpCli
                 success = true,
                 request = requestPayload,
                 response = responseBody,
-                statusCode = statusCode
+                statusCode = statusCode,
+                tokenGenerated = !string.IsNullOrEmpty(authToken)
             });
         }
     }
