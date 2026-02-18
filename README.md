@@ -113,6 +113,9 @@ MB Block functionality configuration:
 ```json
 {
   "MBBlock": {
+    "TokenUrl": "http://10.255.233.28:2000/token",
+    "Username": "test1",
+    "Password": "test1@123",
     "EncryptionBaseKey": "MBBOB12#",
     "MiddlewareUrl": "http://10.255.234.21:2000/mb/mbBlockChk",
     "ChannelCode": "21",
@@ -121,6 +124,13 @@ MB Block functionality configuration:
   }
 }
 ```
+
+**Token Authentication:**
+- Automatically generates authentication token before API calls
+- Token added as Bearer token in Authorization header
+- Configurable credentials per environment
+
+See [TOKEN_AUTH_CONFIG.md](MbBusinessApp/TOKEN_AUTH_CONFIG.md) for token authentication guide.
 
 ## Troubleshooting
 
@@ -153,6 +163,7 @@ See detailed documentation for more information.
 - [SETUP.md](SETUP.md) - Detailed setup and troubleshooting guide
 - [TESTING.md](TESTING.md) - **Sample URLs and testing guide with query parameters**
 - [API_ENDPOINTS_CONFIG.md](MbBusinessApp/API_ENDPOINTS_CONFIG.md) - **API endpoints configuration guide**
+- [TOKEN_AUTH_CONFIG.md](MbBusinessApp/TOKEN_AUTH_CONFIG.md) - **Token authentication configuration guide**
 - [MBBLOCK_TECHNICAL_DOC.md](MbBusinessApp/MBBLOCK_TECHNICAL_DOC.md) - Technical documentation for MB Block feature
 
 ## 🧪 Quick Testing
