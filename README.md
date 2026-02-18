@@ -128,4 +128,15 @@ See detailed documentation for more information.
 ## Documentation
 
 - [SETUP.md](SETUP.md) - Detailed setup and troubleshooting guide
+- [TESTING.md](TESTING.md) - **Sample URLs and testing guide with query parameters**
 - [MBBLOCK_TECHNICAL_DOC.md](MbBusinessApp/MBBLOCK_TECHNICAL_DOC.md) - Technical documentation for MB Block feature
+
+## 🧪 Quick Testing
+
+Want to test the APIs? See **[TESTING.md](TESTING.md)** for comprehensive sample URLs with query parameters!
+
+**Quick test URLs:**
+- Main page: `http://localhost:5000/?message=Hello%20World`
+- First API: `http://localhost:5000/api/first?message=Test`
+- Second API: `http://localhost:5000/api/second`
+- MB Block (test mode): `http://localhost:5000/mbblock.html?mobileNumber=9467223387&callId=TEST123&testMode=true`
