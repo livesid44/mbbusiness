@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MB Business Block Check</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .info {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-left: 4px solid #17a2b8;
+            border-radius: 4px;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .status.loading {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .status.success {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background-color: white;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .json-display {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .label {
+            font-weight: bold;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MB Business Block Check</h1>
+        
+        <div class="section">
+            <h2>Input Parameters</h2>
+            <div class="info">
+                <p><span class="label">Mobile Number:</span> <span id="mobileNumber">-</span></p>
+                <p><span class="label">Call ID:</span> <span id="callId">-</span></p>
+            </div>
+        </div>
+
+        <div id="statusSection" class="status" style="display:none;">
+            <p id="statusMessage">Loading...</p>
+        </div>
+
+        <div id="requestSection" class="section" style="display:none;">
+            <h2>Request Payload</h2>
+            <div class="json-display" id="requestPayload"></div>
+        </div>
+
+        <div id="responseSection" class="section" style="display:none;">
+            <h2>API Response</h2>
+            <div id="responseTable"></div>
+        </div>
+
+        <div id="debugSection" class="section" style="display:none;">
+            <h2>Debug Information</h2>
+            <div class="json-display" id="debugInfo"></div>
+        </div>
+    </div>
+
+    <script>
+        // Get query string parameter
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // Display status message
+        function showStatus(message, type) {
+            const statusSection = document.getElementById('statusSection');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            statusSection.style.display = 'block';
+            statusSection.className = `status ${type}`;
+            statusMessage.textContent = message;
+        }
+
+        // Display request payload
+        function displayRequest(request) {
+            const requestSection = document.getElementById('requestSection');
+            const requestPayload = document.getElementById('requestPayload');
+            
+            requestSection.style.display = 'block';
+            requestPayload.textContent = JSON.stringify(request, null, 2);
+        }
+
+        // Display response in table format
+        function displayResponse(response) {
+            const responseSection = document.getElementById('responseSection');
+            const responseTable = document.getElementById('responseTable');
+            
+            responseSection.style.display = 'block';
+            
+            try {
+                // Try to parse response as JSON
+                let data = response;
+                if (typeof response === 'string') {
+                    data = JSON.parse(response);
+                }
+                
+                // Create table
+                let tableHtml = '<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>';
+                
+                function addRows(obj, prefix = '') {
+                    for (let key in obj) {
+                        if (obj.hasOwnProperty(key)) {
+                            const fullKey = prefix ? `${prefix}.${key}` : key;
+                            const value = obj[key];
+                            
+                            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                                addRows(value, fullKey);
+                            } else {
+                                tableHtml += `<tr><td>${fullKey}</td><td>${JSON.stringify(value)}</td></tr>`;
+                            }
+                        }
+                    }
+                }
+                
+                addRows(data);
+                tableHtml += '</tbody></table>';
+                responseTable.innerHTML = tableHtml;
+            } catch (e) {
+                // If not JSON, display as text
+                responseTable.innerHTML = `<div class="json-display">${response}</div>`;
+            }
+        }
+
+        // Display debug information
+        function displayDebug(data) {
+            const debugSection = document.getElementById('debugSection');
+            const debugInfo = document.getElementById('debugInfo');
+            
+            debugSection.style.display = 'block';
+            debugInfo.textContent = JSON.stringify(data, null, 2);
+        }
+
+        // Call MB Block Check API
+        async function callMBBlockAPI() {
+            const mobileNumber = getQueryParam('mobileNumber') || getQueryParam('mobile');
+            const callId = getQueryParam('callId') || getQueryParam('call_id');
+            const testMode = getQueryParam('testMode');
+            
+            // Display input parameters
+            document.getElementById('mobileNumber').textContent = mobileNumber || 'Not provided';
+            document.getElementById('callId').textContent = callId || 'Not provided';
+            
+            if (!mobileNumber || !callId) {
+                showStatus('Error: Mobile number and Call ID are required in query string', 'error');
+                showStatus('Example URL: ?mobileNumber=9467223387&callId=A9EA8FD3FAA711F08BBEDE22482A56FD', 'error');
+                return;
+            }
+            
+            showStatus('Processing request...', 'loading');
+            
+            try {
+                let apiUrl = `/api/mbblock?mobileNumber=${encodeURIComponent(mobileNumber)}&callId=${encodeURIComponent(callId)}`;
+                if (testMode) {
+                    apiUrl += `&testMode=${testMode}`;
+                }
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('API call completed successfully!', 'success');
+                    
+                    // Display request payload
+                    if (data.request) {
+                        displayRequest(data.request);
+                    }
+                    
+                    // Display response
+                    if (data.response) {
+                        displayResponse(data.response);
+                    }
+                    
+                    // Display debug info
+                    displayDebug({
+                        statusCode: data.statusCode,
+                        encryptionKey: data.encryptionKey,
+                        fullResponse: data
+                    });
+                } else {
+                    showStatus(`Error: ${data.error}`, 'error');
+                    displayDebug(data);
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                console.error('API call failed:', error);
+            }
+        }
+
+        // Call API when page loads
+        document.addEventListener('DOMContentLoaded', callMBBlockAPI);
+    </script>
+</body>
+</html>
