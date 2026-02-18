@@ -209,7 +209,7 @@
             
             if (!mobileNumber || !callId) {
                 showStatus('Error: Mobile number and Call ID are required in query string', 'error');
-                showStatus('Example URL: ?mobileNumber=9467223387&callId=A9EA8FD3FAA711F08BBEDE22482A56FD', 'error');
+                showStatus('Example URL: ?mobileNumber=1234567890&callId=ABC123DEF456', 'error');
                 return;
             }
             
@@ -241,11 +241,11 @@
                         displayResponse(data.response);
                     }
                     
-                    // Display debug info
+                    // Display debug info (without sensitive data)
                     displayDebug({
                         statusCode: data.statusCode,
-                        encryptionKey: data.encryptionKey,
-                        fullResponse: data
+                        timestamp: new Date().toISOString(),
+                        requestId: callId
                     });
                 } else {
                     showStatus(`Error: ${data.error}`, 'error');

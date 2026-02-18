@@ -42,7 +42,7 @@ app.MapGet("/api/second", () =>
 });
 
 // MB Block Check API endpoint
-app.MapGet("/api/mbblock", async (string? mobileNumber, string? callId, IHttpClientFactory httpClientFactory, bool? testMode) =>
+app.MapGet("/api/mbblock", async (string? mobileNumber, string? callId, IHttpClientFactory httpClientFactory, IConfiguration configuration, bool? testMode) =>
 {
     try
     {
@@ -52,16 +52,22 @@ app.MapGet("/api/mbblock", async (string? mobileNumber, string? callId, IHttpCli
             return Results.BadRequest(new { error = "Mobile number and Call ID are required" });
         }
 
+        // Get configuration values
+        string channelCode = configuration["MBBlock:ChannelCode"] ?? "21";
+        string channel = configuration["MBBlock:Channel"] ?? "CISCO";
+        string clientId = configuration["MBBlock:ClientId"] ?? "900001";
+        string baseKey = configuration["MBBlock:EncryptionBaseKey"] ?? "MBBOB12#";
+        string middlewareUrl = configuration["MBBlock:MiddlewareUrl"] ?? "http://10.255.234.21:2000/mb/mbBlockChk";
+
         // Step 1: Create the JSON payload with mobile number and channel code
         var payload = new
         {
             MOBILE_NUMBER = mobileNumber,
-            CHANNEL_CODE = "21"
+            CHANNEL_CODE = channelCode
         };
         string jsonPayload = JsonSerializer.Serialize(payload);
 
         // Step 2: Generate encryption key (base key + current date)
-        string baseKey = "MBBOB12#";
         string encryptionKey = EncryptionUtils.GetEncryptionKey(baseKey);
 
         // Step 3: Encrypt the payload
@@ -74,12 +80,12 @@ app.MapGet("/api/mbblock", async (string? mobileNumber, string? callId, IHttpCli
         var requestPayload = new
         {
             requestId = callId,
-            channel = "CISCO",
+            channel = channel,
             data = new
             {
                 encData = encryptedData,
                 hash = hash,
-                clientId = "900001"
+                clientId = clientId
             }
         };
 
@@ -110,12 +116,10 @@ app.MapGet("/api/mbblock", async (string? mobileNumber, string? callId, IHttpCli
             // Set timeout to 30 seconds
             httpClient.Timeout = TimeSpan.FromSeconds(30);
             
-            var apiUrl = "http://10.255.234.21:2000/mb/mbBlockChk";
-            
             var jsonContent = JsonSerializer.Serialize(requestPayload);
             var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
 
-            var apiResponse = await httpClient.PostAsync(apiUrl, content);
+            var apiResponse = await httpClient.PostAsync(middlewareUrl, content);
             responseBody = await apiResponse.Content.ReadAsStringAsync();
             statusCode = (int)apiResponse.StatusCode;
         }
@@ -127,17 +131,19 @@ app.MapGet("/api/mbblock", async (string? mobileNumber, string? callId, IHttpCli
             request = requestPayload,
             response = responseBody,
             statusCode = statusCode,
-            encryptionKey = encryptionKey, // For debugging purposes
             originalPayload = jsonPayload // Show original unencrypted payload for verification
         });
     }
     catch (Exception ex)
     {
+        // Log error server-side
+        Console.WriteLine($"MB Block API Error: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        
         return Results.Ok(new
         {
             success = false,
-            error = ex.Message,
-            stackTrace = ex.StackTrace
+            error = ex.Message
         });
     }
 });

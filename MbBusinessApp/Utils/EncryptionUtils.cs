@@ -20,7 +20,9 @@ namespace MbBusinessApp.Utils
             try
             {
                 byte[] clearTextBytes = Encoding.UTF8.GetBytes(cleartext);
-                byte[] keyBytes = Encoding.UTF8.GetBytes(encKey);
+                
+                // Ensure key is proper length for AES (16, 24, or 32 bytes)
+                byte[] keyBytes = GetValidKeyBytes(encKey);
 
                 // Generate random IV
                 byte[] iv = new byte[GCM_IV_LENGTH];
@@ -61,29 +63,22 @@ namespace MbBusinessApp.Utils
         /// <returns>Decrypted text</returns>
         public static string Decrypt(string base64Cipher, string keyStr)
         {
-            try
+            byte[] decoded = Convert.FromBase64String(base64Cipher);
+            byte[] iv = new byte[GCM_IV_LENGTH];
+            byte[] tag = new byte[GCM_TAG_LENGTH];
+            byte[] cipherText = new byte[decoded.Length - GCM_IV_LENGTH - GCM_TAG_LENGTH];
+
+            Buffer.BlockCopy(decoded, 0, iv, 0, GCM_IV_LENGTH);
+            Buffer.BlockCopy(decoded, GCM_IV_LENGTH, cipherText, 0, cipherText.Length);
+            Buffer.BlockCopy(decoded, GCM_IV_LENGTH + cipherText.Length, tag, 0, GCM_TAG_LENGTH);
+
+            byte[] keyBytes = GetValidKeyBytes(keyStr);
+
+            using (var aesGcm = new AesGcm(keyBytes, GCM_TAG_LENGTH))
             {
-                byte[] decoded = Convert.FromBase64String(base64Cipher);
-                byte[] iv = new byte[GCM_IV_LENGTH];
-                byte[] tag = new byte[GCM_TAG_LENGTH];
-                byte[] cipherText = new byte[decoded.Length - GCM_IV_LENGTH - GCM_TAG_LENGTH];
-
-                Buffer.BlockCopy(decoded, 0, iv, 0, GCM_IV_LENGTH);
-                Buffer.BlockCopy(decoded, GCM_IV_LENGTH, cipherText, 0, cipherText.Length);
-                Buffer.BlockCopy(decoded, GCM_IV_LENGTH + cipherText.Length, tag, 0, GCM_TAG_LENGTH);
-
-                byte[] keyBytes = Encoding.UTF8.GetBytes(keyStr);
-
-                using (var aesGcm = new AesGcm(keyBytes, GCM_TAG_LENGTH))
-                {
-                    byte[] plaintext = new byte[cipherText.Length];
-                    aesGcm.Decrypt(iv, cipherText, tag, plaintext);
-                    return Encoding.UTF8.GetString(plaintext);
-                }
-            }
-            catch (Exception ex)
-            {
-                return $"Decryption failed: {ex.Message}";
+                byte[] plaintext = new byte[cipherText.Length];
+                aesGcm.Decrypt(iv, cipherText, tag, plaintext);
+                return Encoding.UTF8.GetString(plaintext);
             }
         }
 
@@ -124,6 +119,34 @@ namespace MbBusinessApp.Utils
                 hexString.Append(b.ToString("x2"));
             }
             return hexString.ToString();
+        }
+
+        /// <summary>
+        /// Ensures key is valid AES key length (16, 24, or 32 bytes)
+        /// </summary>
+        private static byte[] GetValidKeyBytes(string key)
+        {
+            byte[] keyBytes = Encoding.UTF8.GetBytes(key);
+            
+            // If key is already a valid AES size, use it as-is
+            if (keyBytes.Length == 16 || keyBytes.Length == 24 || keyBytes.Length == 32)
+            {
+                return keyBytes;
+            }
+            
+            // Otherwise, pad or truncate to 32 bytes (AES-256)
+            byte[] validKey = new byte[32];
+            if (keyBytes.Length > 32)
+            {
+                // Truncate if too long
+                Buffer.BlockCopy(keyBytes, 0, validKey, 0, 32);
+            }
+            else
+            {
+                // Pad with zeros if too short
+                Buffer.BlockCopy(keyBytes, 0, validKey, 0, keyBytes.Length);
+            }
+            return validKey;
         }
 
         /// <summary>
