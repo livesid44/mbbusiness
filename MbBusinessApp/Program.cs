@@ -12,8 +12,13 @@ var app = builder.Build();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+// Get API endpoint paths from configuration
+var firstApiPath = app.Configuration["ApiEndpoints:FirstApi"] ?? "/api/first";
+var secondApiPath = app.Configuration["ApiEndpoints:SecondApi"] ?? "/api/second";
+var mbBlockApiPath = app.Configuration["ApiEndpoints:MbBlockApi"] ?? "/api/mbblock";
+
 // First API endpoint - receives message from query string
-app.MapGet("/api/first", (string? message) =>
+app.MapGet(firstApiPath, (string? message) =>
 {
     var response = new
     {
@@ -27,7 +32,7 @@ app.MapGet("/api/first", (string? message) =>
 });
 
 // Second API endpoint - called from button click
-app.MapGet("/api/second", () =>
+app.MapGet(secondApiPath, () =>
 {
     var response = new
     {
@@ -42,7 +47,7 @@ app.MapGet("/api/second", () =>
 });
 
 // MB Block Check API endpoint
-app.MapGet("/api/mbblock", async (string? mobileNumber, string? callId, IHttpClientFactory httpClientFactory, IConfiguration configuration, bool? testMode) =>
+app.MapGet(mbBlockApiPath, async (string? mobileNumber, string? callId, IHttpClientFactory httpClientFactory, IConfiguration configuration, bool? testMode) =>
 {
     try
     {
@@ -155,6 +160,21 @@ app.MapGet("/api/mbblock", async (string? mobileNumber, string? callId, IHttpCli
             error = ex.Message
         });
     }
+});
+
+// API Configuration endpoint - returns configured API paths for frontend
+app.MapGet("/api/config", (IConfiguration configuration) =>
+{
+    var config = new
+    {
+        endpoints = new
+        {
+            firstApi = configuration["ApiEndpoints:FirstApi"] ?? "/api/first",
+            secondApi = configuration["ApiEndpoints:SecondApi"] ?? "/api/second",
+            mbBlockApi = configuration["ApiEndpoints:MbBlockApi"] ?? "/api/mbblock"
+        }
+    };
+    return Results.Json(config);
 });
 
 app.Run();

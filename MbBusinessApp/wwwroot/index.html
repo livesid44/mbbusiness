@@ -79,6 +79,26 @@
     </div>
 
     <script>
+        // API endpoints configuration (loaded from server)
+        let apiEndpoints = {
+            firstApi: '/api/first',
+            secondApi: '/api/second'
+        };
+
+        // Load API configuration from server
+        async function loadApiConfig() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const config = await response.json();
+                    apiEndpoints = config.endpoints;
+                    console.log('API endpoints loaded:', apiEndpoints);
+                }
+            } catch (error) {
+                console.warn('Failed to load API config, using defaults:', error);
+            }
+        }
+
         // Get query string parameter
         function getQueryParam(name) {
             const urlParams = new URLSearchParams(window.location.search);
@@ -91,7 +111,7 @@
             const responseDiv = document.getElementById('firstApiResponse');
             
             try {
-                const response = await fetch(`/api/first?message=${encodeURIComponent(message)}`);
+                const response = await fetch(`${apiEndpoints.firstApi}?message=${encodeURIComponent(message)}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -112,7 +132,7 @@
             responseDiv.textContent = 'Loading...';
             
             try {
-                const response = await fetch('/api/second');
+                const response = await fetch(apiEndpoints.secondApi);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -125,8 +145,14 @@
             }
         }
 
-        // Call first API when page loads
-        document.addEventListener('DOMContentLoaded', callFirstApi);
+        // Initialize app
+        async function initApp() {
+            await loadApiConfig();
+            await callFirstApi();
+        }
+
+        // Call init when page loads
+        document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>

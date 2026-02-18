@@ -122,6 +122,25 @@
     </div>
 
     <script>
+        // API endpoints configuration (loaded from server)
+        let apiEndpoints = {
+            mbBlockApi: '/api/mbblock'
+        };
+
+        // Load API configuration from server
+        async function loadApiConfig() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const config = await response.json();
+                    apiEndpoints = config.endpoints;
+                    console.log('API endpoints loaded:', apiEndpoints);
+                }
+            } catch (error) {
+                console.warn('Failed to load API config, using defaults:', error);
+            }
+        }
+
         // Get query string parameter
         function getQueryParam(name) {
             const urlParams = new URLSearchParams(window.location.search);
@@ -215,7 +234,7 @@
             showStatus('Processing request...', 'loading');
             
             try {
-                let apiUrl = `/api/mbblock?mobileNumber=${encodeURIComponent(mobileNumber)}&callId=${encodeURIComponent(callId)}`;
+                let apiUrl = `${apiEndpoints.mbBlockApi}?mobileNumber=${encodeURIComponent(mobileNumber)}&callId=${encodeURIComponent(callId)}`;
                 if (testMode) {
                     apiUrl += `&testMode=${testMode}`;
                 }
@@ -256,8 +275,14 @@
             }
         }
 
-        // Call API when page loads
-        document.addEventListener('DOMContentLoaded', callMBBlockAPI);
+        // Initialize app
+        async function initApp() {
+            await loadApiConfig();
+            await callMBBlockAPI();
+        }
+
+        // Call init when page loads
+        document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
