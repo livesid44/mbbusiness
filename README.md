@@ -86,7 +86,30 @@ See [MBBLOCK_TECHNICAL_DOC.md](MbBusinessApp/MBBLOCK_TECHNICAL_DOC.md) for compl
 
 ## Configuration
 
-All configuration is in `appsettings.json`. For MB Block functionality:
+### API Endpoints
+
+All API endpoints are now configurable in `appsettings.json`:
+
+```json
+{
+  "ApiEndpoints": {
+    "FirstApi": "/api/first",
+    "SecondApi": "/api/second",
+    "MbBlockApi": "/api/mbblock"
+  }
+}
+```
+
+**Benefits:**
+- Change endpoint paths without code changes
+- Different endpoints per environment
+- Support for API versioning and gateway integration
+
+See [API_ENDPOINTS_CONFIG.md](MbBusinessApp/API_ENDPOINTS_CONFIG.md) for complete configuration guide.
+
+### MB Block Settings
+
+MB Block functionality configuration:
 ```json
 {
   "MBBlock": {
@@ -129,6 +152,7 @@ See detailed documentation for more information.
 
 - [SETUP.md](SETUP.md) - Detailed setup and troubleshooting guide
 - [TESTING.md](TESTING.md) - **Sample URLs and testing guide with query parameters**
+- [API_ENDPOINTS_CONFIG.md](MbBusinessApp/API_ENDPOINTS_CONFIG.md) - **API endpoints configuration guide**
 - [MBBLOCK_TECHNICAL_DOC.md](MbBusinessApp/MBBLOCK_TECHNICAL_DOC.md) - Technical documentation for MB Block feature
 
 ## 🧪 Quick Testing
