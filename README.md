@@ -2,6 +2,35 @@
 
 A .NET web application repository.
 
+## 🚀 Quick Start
+
+### First Time Setup
+
+If you get an error like `NETSDK1004: Assets file 'obj\project.assets.json' not found`, you need to restore NuGet packages:
+
+**Windows:**
+```batch
+restore.bat
+```
+
+**Linux/Mac:**
+```bash
+chmod +x restore.sh
+./restore.sh
+```
+
+**Or manually:**
+```bash
+cd MbBusinessApp
+dotnet restore
+dotnet build
+dotnet run
+```
+
+📖 **For detailed setup instructions, see [SETUP.md](SETUP.md)**
+
+---
+
 ## Projects
 
 ### MbBusinessApp
@@ -19,6 +48,7 @@ Demonstrates basic API integration with query string parameters and button-trigg
 **Quick Start:**
 ```bash
 cd MbBusinessApp
+dotnet restore
 dotnet run
 ```
 Visit `http://localhost:5000` or `http://localhost:5000/?message=Your%20Custom%20Message`
@@ -37,6 +67,7 @@ Secure mobile number block status checking with AES-GCM encryption and middlewar
 **Quick Start:**
 ```bash
 cd MbBusinessApp
+dotnet restore
 dotnet run
 ```
 
@@ -68,6 +99,17 @@ All configuration is in `appsettings.json`. For MB Block functionality:
 }
 ```
 
+## Troubleshooting
+
+### "Assets file not found" Error (NETSDK1004)
+
+This error occurs when NuGet packages haven't been restored. **Solution:**
+
+1. Run the restore script: `restore.bat` (Windows) or `./restore.sh` (Linux/Mac)
+2. Or manually: `cd MbBusinessApp && dotnet restore`
+
+See [SETUP.md](SETUP.md) for more troubleshooting help.
+
 ## Security
 
 - ✅ No sensitive data exposed to clients
@@ -77,3 +119,13 @@ All configuration is in `appsettings.json`. For MB Block functionality:
 - ✅ CodeQL security scan passed (0 alerts)
 
 See detailed documentation for more information.
+
+## Requirements
+
+- .NET 9.0 SDK or later
+- Windows, Linux, or macOS
+
+## Documentation
+
+- [SETUP.md](SETUP.md) - Detailed setup and troubleshooting guide
+- [MBBLOCK_TECHNICAL_DOC.md](MbBusinessApp/MBBLOCK_TECHNICAL_DOC.md) - Technical documentation for MB Block feature
