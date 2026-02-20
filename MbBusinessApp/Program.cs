@@ -227,7 +227,7 @@ app.MapGet(mbBlockApiPath, async (string? mobileNumber, string? callId, IHttpCli
                     
                     if (!string.IsNullOrEmpty(authToken))
                     {
-                        Console.WriteLine($"  Token generated successfully: {authToken?.Substring(0, Math.Min(20, authToken?.Length ?? 0))}... (truncated)");
+                        Console.WriteLine($"  Token generated successfully: {authToken.Substring(0, Math.Min(20, authToken.Length))}... (truncated)");
                         Console.WriteLine($"  Token length: {authToken.Length} characters");
                     }
                     else
@@ -279,19 +279,77 @@ app.MapGet(mbBlockApiPath, async (string? mobileNumber, string? callId, IHttpCli
             Console.WriteLine($"  Response Body: {responseBody}");
             Console.WriteLine($"  Response Length: {responseBody.Length} characters");
             
+            // Step 11: Decrypt the data.response field if present
+            Console.WriteLine($"\n[{timestamp}] STEP 11: Processing response and decrypting data.response field");
+            object decryptedResponse = responseBody;
+            
+            try
+            {
+                // Parse the response JSON
+                var responseJson = JsonSerializer.Deserialize<JsonElement>(responseBody);
+                
+                // Check if data.response field exists and contains encrypted data
+                if (responseJson.TryGetProperty("data", out var dataElement) && 
+                    dataElement.TryGetProperty("response", out var responseElement))
+                {
+                    var encryptedResponseData = responseElement.GetString();
+                    if (!string.IsNullOrEmpty(encryptedResponseData))
+                    {
+                        Console.WriteLine($"  Found encrypted data.response field");
+                        Console.WriteLine($"  Encrypted data length: {encryptedResponseData.Length} characters");
+                        Console.WriteLine($"  Encrypted data (first 50 chars): {encryptedResponseData.Substring(0, Math.Min(50, encryptedResponseData.Length))}...");
+                        
+                        // Decrypt the data.response field
+                        Console.WriteLine($"  Decrypting data.response using encryption key: {encryptionKey}");
+                        var decryptedData = EncryptionUtils.Decrypt(encryptedResponseData, encryptionKey);
+                        Console.WriteLine($"  Decryption successful!");
+                        Console.WriteLine($"  Decrypted data length: {decryptedData.Length} characters");
+                        Console.WriteLine($"  Decrypted data: {decryptedData}");
+                        
+                        // Try to parse the decrypted data as JSON
+                        try
+                        {
+                            var decryptedJson = JsonSerializer.Deserialize<JsonElement>(decryptedData);
+                            decryptedResponse = decryptedJson;
+                            Console.WriteLine($"  Decrypted data is valid JSON");
+                        }
+                        catch
+                        {
+                            // If not JSON, return as string
+                            decryptedResponse = decryptedData;
+                            Console.WriteLine($"  Decrypted data is plain text (not JSON)");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"  data.response field is empty or null");
+                        Console.WriteLine($"  Returning original response as-is");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"  No encrypted data.response field found in response");
+                    Console.WriteLine($"  Returning original response as-is");
+                }
+            }
+            catch (Exception decryptEx)
+            {
+                Console.WriteLine($"  ERROR during decryption: {decryptEx.Message}");
+                Console.WriteLine($"  Returning original response");
+                decryptedResponse = responseBody;
+            }
+            
             Console.WriteLine($"\n[{timestamp}] REQUEST COMPLETED");
             Console.WriteLine($"  Success: {apiResponse.IsSuccessStatusCode}");
             Console.WriteLine($"  Token Generated: {!string.IsNullOrEmpty(authToken)}");
             Console.WriteLine($"{'='*80}\n");
             
-            // Return response without sensitive debug info for production
+            // Return only the decrypted response
             return Results.Ok(new
             {
                 success = true,
-                request = requestPayload,
-                response = responseBody,
-                statusCode = statusCode,
-                tokenGenerated = !string.IsNullOrEmpty(authToken)
+                response = decryptedResponse,
+                statusCode = statusCode
             });
         }
     }
