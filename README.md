@@ -162,16 +162,30 @@ See detailed documentation for more information.
 
 - [SETUP.md](SETUP.md) - Detailed setup and troubleshooting guide
 - [TESTING.md](TESTING.md) - **Sample URLs and testing guide with query parameters**
+- [CURL_EXAMPLES.md](CURL_EXAMPLES.md) - **📋 Confirmed CURL commands for all APIs** ⭐
 - [API_ENDPOINTS_CONFIG.md](MbBusinessApp/API_ENDPOINTS_CONFIG.md) - **API endpoints configuration guide**
 - [TOKEN_AUTH_CONFIG.md](MbBusinessApp/TOKEN_AUTH_CONFIG.md) - **Token authentication configuration guide**
 - [MBBLOCK_TECHNICAL_DOC.md](MbBusinessApp/MBBLOCK_TECHNICAL_DOC.md) - Technical documentation for MB Block feature
 
 ## 🧪 Quick Testing
 
-Want to test the APIs? See **[TESTING.md](TESTING.md)** for comprehensive sample URLs with query parameters!
+### Browser Testing
+Want to test the APIs in browser? See **[TESTING.md](TESTING.md)** for comprehensive sample URLs with query parameters!
 
 **Quick test URLs:**
 - Main page: `http://localhost:5000/?message=Hello%20World`
 - First API: `http://localhost:5000/api/first?message=Test`
 - Second API: `http://localhost:5000/api/second`
 - MB Block (test mode): `http://localhost:5000/mbblock.html?mobileNumber=9467223387&callId=TEST123&testMode=true`
+
+### CURL Testing
+Need CURL commands? See **[CURL_EXAMPLES.md](CURL_EXAMPLES.md)** for confirmed CURL commands!
+
+**Quick CURL commands:**
+```bash
+# MB Block Check API (Get Details)
+curl "http://localhost:5000/api/mbblock?mobileNumber=9467223387&callId=TEST123&testMode=true"
+
+# MB Temp Block API (Temporary Block)
+curl "http://localhost:5000/api/mbTempBlock?mobileNumber=9467223387&callId=TEST123&reason=fraud&testMode=true"
+```
