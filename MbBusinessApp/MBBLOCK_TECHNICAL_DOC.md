@@ -86,13 +86,15 @@ All encoded as Base64 for transmission.
 **Purpose:** Data integrity verification
 
 **Input:** Base64-encoded encrypted data
-**Key:** Same as encryption key
+**Key:** "MB@nking" (fixed hash key, different from encryption key)
 **Output:** 64-character hex string
 
 **Process:**
 ```
-hash = HMAC-SHA256(encryptedData, encryptionKey)
+hash = HMAC-SHA256(encryptedData, "MB@nking")
 ```
+
+**Note:** The hash key is intentionally different from the encryption key. While the encryption key is date-based (`MBBOB12#yyyyMMdd`), the hash key is a fixed value (`MB@nking`) as per the Java implementation reference.
 
 ## API Endpoints
 
@@ -252,9 +254,11 @@ Benefits:
    - Use test mode for development
 
 4. **Hash Mismatch**
-   - Ensure same key used for encryption and hashing
+   - Ensure "MB@nking" is used as the hash key (not the encryption key)
    - Verify encrypted data is not modified before hashing
    - Check that base64 encoding is correct
+   - Encryption key: `MBBOB12#yyyyMMdd` (date-based)
+   - Hash key: `MB@nking` (fixed value)
 
 ## Code Examples
 

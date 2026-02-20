@@ -62,6 +62,7 @@ app.MapGet(mbBlockApiPath, async (string? mobileNumber, string? callId, IHttpCli
         string channel = configuration["MBBlock:Channel"] ?? "CISCO";
         string clientId = configuration["MBBlock:ClientId"] ?? "900001";
         string baseKey = configuration["MBBlock:EncryptionBaseKey"] ?? "MBBOB12#";
+        string hashKey = configuration["MBBlock:HashKey"] ?? "MB@nking";
         string middlewareUrl = configuration["MBBlock:MiddlewareUrl"] ?? "http://10.255.234.21:2000/mb/mbBlockChk";
         string tokenUrl = configuration["MBBlock:TokenUrl"] ?? "http://10.255.233.28:2000/token";
         string username = configuration["MBBlock:Username"] ?? "test1";
@@ -81,8 +82,8 @@ app.MapGet(mbBlockApiPath, async (string? mobileNumber, string? callId, IHttpCli
         // Step 3: Encrypt the payload
         string encryptedData = EncryptionUtils.Encrypt(jsonPayload, encryptionKey);
 
-        // Step 4: Generate HMAC hash
-        string hash = EncryptionUtils.GetHmac(encryptedData, encryptionKey);
+        // Step 4: Generate HMAC hash using the hash key (MB@nking)
+        string hash = EncryptionUtils.GetHmac(encryptedData, hashKey);
 
         // Step 5: Create the final request payload
         var requestPayload = new
