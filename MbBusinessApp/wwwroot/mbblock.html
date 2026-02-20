@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MB Business Block Check</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .info {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-left: 4px solid #17a2b8;
+            border-radius: 4px;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .status.loading {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .status.success {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background-color: white;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .json-display {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .label {
+            font-weight: bold;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MB Business Block Check - Response</h1>
+        
+        <div id="statusSection" class="status" style="display:none;">
+            <p id="statusMessage">Loading...</p>
+        </div>
+
+        <div id="responseSection" class="section" style="display:none;">
+            <h2>Response Data</h2>
+            <div id="responseTable"></div>
+        </div>
+
+        <!-- Temp Block Section -->
+        <div id="tempBlockSection" class="section" style="display:none;">
+            <h2>🔒 Temporary Block</h2>
+            <div style="margin-bottom: 15px;">
+                <label for="blockReason" style="display: block; margin-bottom: 5px; font-weight: bold;">Reason for Block:</label>
+                <input type="text" id="blockReason" placeholder="Enter reason (e.g., fraud, suspicious activity)" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px;" />
+            </div>
+            <button onclick="performTempBlock()" 
+                    style="background-color: #dc3545; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold;">
+                🔒 Temporary Block
+            </button>
+            
+            <div id="tempBlockResponse" class="status" style="display:none; margin-top: 15px;">
+                <p id="tempBlockMessage"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API endpoints configuration (loaded from server)
+        let apiEndpoints = {
+            mbBlockApi: '/api/mbblock'
+        };
+
+        // Load API configuration from server
+        async function loadApiConfig() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const config = await response.json();
+                    apiEndpoints = config.endpoints;
+                    console.log('API endpoints loaded:', apiEndpoints);
+                }
+            } catch (error) {
+                console.warn('Failed to load API config, using defaults:', error);
+            }
+        }
+
+        // Get query string parameter
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // Display status message
+        function showStatus(message, type) {
+            const statusSection = document.getElementById('statusSection');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            statusSection.style.display = 'block';
+            statusSection.className = `status ${type}`;
+            statusMessage.textContent = message;
+        }
+
+        // Display response in table format
+        function displayResponse(response) {
+            const responseSection = document.getElementById('responseSection');
+            const responseTable = document.getElementById('responseTable');
+            
+            responseSection.style.display = 'block';
+            
+            try {
+                // Try to parse response as JSON
+                let data = response;
+                if (typeof response === 'string') {
+                    data = JSON.parse(response);
+                }
+                
+                // Create table
+                let tableHtml = '<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>';
+                
+                function addRows(obj, prefix = '') {
+                    for (let key in obj) {
+                        if (obj.hasOwnProperty(key)) {
+                            const fullKey = prefix ? `${prefix}.${key}` : key;
+                            const value = obj[key];
+                            
+                            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                                addRows(value, fullKey);
+                            } else {
+                                tableHtml += `<tr><td>${fullKey}</td><td>${JSON.stringify(value)}</td></tr>`;
+                            }
+                        }
+                    }
+                }
+                
+                addRows(data);
+                tableHtml += '</tbody></table>';
+                responseTable.innerHTML = tableHtml;
+            } catch (e) {
+                // If not JSON, display as text
+                responseTable.innerHTML = `<div class="json-display">${response}</div>`;
+            }
+        }
+
+        // Call MB Block Check API
+        async function callMBBlockAPI() {
+            const mobileNumber = getQueryParam('mobileNumber') || getQueryParam('mobile');
+            const callId = getQueryParam('callId') || getQueryParam('call_id');
+            const testMode = getQueryParam('testMode');
+            
+            if (!mobileNumber || !callId) {
+                showStatus('Error: Mobile number and Call ID are required in query string. Example: ?mobileNumber=1234567890&callId=ABC123DEF456', 'error');
+                return;
+            }
+            
+            showStatus('Processing request...', 'loading');
+            
+            try {
+                let apiUrl = `${apiEndpoints.mbBlockApi}?mobileNumber=${encodeURIComponent(mobileNumber)}&callId=${encodeURIComponent(callId)}`;
+                if (testMode) {
+                    apiUrl += `&testMode=${testMode}`;
+                }
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Hide status message after successful response
+                    document.getElementById('statusSection').style.display = 'none';
+                    
+                    // Display only the decrypted response
+                    if (data.response) {
+                        displayResponse(data.response);
+                    }
+                } else {
+                    showStatus(`Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                console.error('API call failed:', error);
+            }
+        }
+
+        // Perform Temp Block
+        async function performTempBlock() {
+            const mobileNumber = getQueryParam('mobileNumber') || getQueryParam('mobile');
+            const callId = getQueryParam('callId') || getQueryParam('call_id');
+            const testMode = getQueryParam('testMode');
+            const reason = document.getElementById('blockReason').value.trim();
+            
+            const tempBlockResponse = document.getElementById('tempBlockResponse');
+            const tempBlockMessage = document.getElementById('tempBlockMessage');
+            
+            // Validate reason
+            if (!reason) {
+                tempBlockResponse.style.display = 'block';
+                tempBlockResponse.className = 'status error';
+                tempBlockMessage.textContent = '❌ Please enter a reason for blocking';
+                return;
+            }
+            
+            // Show loading
+            tempBlockResponse.style.display = 'block';
+            tempBlockResponse.className = 'status loading';
+            tempBlockMessage.textContent = 'Processing temporary block...';
+            
+            try {
+                let apiUrl = `/api/mbTempBlock?mobileNumber=${encodeURIComponent(mobileNumber)}&callId=${encodeURIComponent(callId)}&reason=${encodeURIComponent(reason)}`;
+                if (testMode) {
+                    apiUrl += `&testMode=${testMode}`;
+                }
+                
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    tempBlockResponse.className = 'status success';
+                    
+                    // Display response message
+                    let message = '✅ Temporary block successful\n\n';
+                    if (typeof data.response === 'object') {
+                        message += JSON.stringify(data.response, null, 2);
+                    } else {
+                        message += data.response;
+                    }
+                    
+                    tempBlockMessage.textContent = message;
+                    tempBlockMessage.style.whiteSpace = 'pre-wrap';
+                } else {
+                    tempBlockResponse.className = 'status error';
+                    tempBlockMessage.textContent = `❌ Error: ${data.error}`;
+                }
+            } catch (error) {
+                tempBlockResponse.className = 'status error';
+                tempBlockMessage.textContent = `❌ Error: ${error.message}`;
+                console.error('Temp block API call failed:', error);
+            }
+        }
+
+        // Initialize app
+        async function initApp() {
+            await loadApiConfig();
+            await callMBBlockAPI();
+            
+            // Show temp block section after response is displayed
+            document.getElementById('tempBlockSection').style.display = 'block';
+        }
+
+        // Call init when page loads
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>

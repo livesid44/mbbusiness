@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MB Business API Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .response {
+            margin-top: 10px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MB Business API Demo</h1>
+        
+        <div class="section">
+            <h2>First API (Loaded on Page Load)</h2>
+            <p>This API receives data from the query string parameter 'message'</p>
+            <div id="firstApiResponse" class="response loading">Loading...</div>
+        </div>
+        
+        <div class="section">
+            <h2>Second API (Button Click)</h2>
+            <p>Click the button below to call the second API</p>
+            <button onclick="callSecondApi()">Call Second API</button>
+            <div id="secondApiResponse" class="response" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // API endpoints configuration (loaded from server)
+        let apiEndpoints = {
+            firstApi: '/api/first',
+            secondApi: '/api/second'
+        };
+
+        // Load API configuration from server
+        async function loadApiConfig() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const config = await response.json();
+                    apiEndpoints = config.endpoints;
+                    console.log('API endpoints loaded:', apiEndpoints);
+                }
+            } catch (error) {
+                console.warn('Failed to load API config, using defaults:', error);
+            }
+        }
+
+        // Get query string parameter
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // Call first API on page load
+        async function callFirstApi() {
+            const message = getQueryParam('message') || 'Default message';
+            const responseDiv = document.getElementById('firstApiResponse');
+            
+            try {
+                const response = await fetch(`${apiEndpoints.firstApi}?message=${encodeURIComponent(message)}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                responseDiv.className = 'response';
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Call second API on button click
+        async function callSecondApi() {
+            const responseDiv = document.getElementById('secondApiResponse');
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'response loading';
+            responseDiv.textContent = 'Loading...';
+            
+            try {
+                const response = await fetch(apiEndpoints.secondApi);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                responseDiv.className = 'response';
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Initialize app
+        async function initApp() {
+            await loadApiConfig();
+            await callFirstApi();
+        }
+
+        // Call init when page loads
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
