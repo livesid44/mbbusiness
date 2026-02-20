@@ -101,6 +101,24 @@
             <h2>Response Data</h2>
             <div id="responseTable"></div>
         </div>
+
+        <!-- Temp Block Section -->
+        <div id="tempBlockSection" class="section" style="display:none;">
+            <h2>🔒 Temporary Block</h2>
+            <div style="margin-bottom: 15px;">
+                <label for="blockReason" style="display: block; margin-bottom: 5px; font-weight: bold;">Reason for Block:</label>
+                <input type="text" id="blockReason" placeholder="Enter reason (e.g., fraud, suspicious activity)" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px;" />
+            </div>
+            <button onclick="performTempBlock()" 
+                    style="background-color: #dc3545; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold;">
+                🔒 Temporary Block
+            </button>
+            
+            <div id="tempBlockResponse" class="status" style="display:none; margin-top: 15px;">
+                <p id="tempBlockMessage"></p>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -223,10 +241,74 @@
             }
         }
 
+        // Perform Temp Block
+        async function performTempBlock() {
+            const mobileNumber = getQueryParam('mobileNumber') || getQueryParam('mobile');
+            const callId = getQueryParam('callId') || getQueryParam('call_id');
+            const testMode = getQueryParam('testMode');
+            const reason = document.getElementById('blockReason').value.trim();
+            
+            const tempBlockResponse = document.getElementById('tempBlockResponse');
+            const tempBlockMessage = document.getElementById('tempBlockMessage');
+            
+            // Validate reason
+            if (!reason) {
+                tempBlockResponse.style.display = 'block';
+                tempBlockResponse.className = 'status error';
+                tempBlockMessage.textContent = '❌ Please enter a reason for blocking';
+                return;
+            }
+            
+            // Show loading
+            tempBlockResponse.style.display = 'block';
+            tempBlockResponse.className = 'status loading';
+            tempBlockMessage.textContent = 'Processing temporary block...';
+            
+            try {
+                let apiUrl = `/api/mbTempBlock?mobileNumber=${encodeURIComponent(mobileNumber)}&callId=${encodeURIComponent(callId)}&reason=${encodeURIComponent(reason)}`;
+                if (testMode) {
+                    apiUrl += `&testMode=${testMode}`;
+                }
+                
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    tempBlockResponse.className = 'status success';
+                    
+                    // Display response message
+                    let message = '✅ Temporary block successful\n\n';
+                    if (typeof data.response === 'object') {
+                        message += JSON.stringify(data.response, null, 2);
+                    } else {
+                        message += data.response;
+                    }
+                    
+                    tempBlockMessage.textContent = message;
+                    tempBlockMessage.style.whiteSpace = 'pre-wrap';
+                } else {
+                    tempBlockResponse.className = 'status error';
+                    tempBlockMessage.textContent = `❌ Error: ${data.error}`;
+                }
+            } catch (error) {
+                tempBlockResponse.className = 'status error';
+                tempBlockMessage.textContent = `❌ Error: ${error.message}`;
+                console.error('Temp block API call failed:', error);
+            }
+        }
+
         // Initialize app
         async function initApp() {
             await loadApiConfig();
             await callMBBlockAPI();
+            
+            // Show temp block section after response is displayed
+            document.getElementById('tempBlockSection').style.display = 'block';
         }
 
         // Call init when page loads

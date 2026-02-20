@@ -484,6 +484,326 @@ app.MapPost("/api/decrypt", (IConfiguration configuration, DecryptRequest reques
     }
 });
 
+// MB Temp Block API endpoint - temporary block functionality
+app.MapGet("/api/mbTempBlock", async (HttpContext context, IConfiguration configuration) =>
+{
+    string? mobileNumber = context.Request.Query["mobileNumber"];
+    string? requestId = context.Request.Query["callId"];
+    string? reason = context.Request.Query["reason"];
+    bool testMode = context.Request.Query["testMode"].ToString().ToLower() == "true";
+    
+    var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+    
+    Console.WriteLine($"\n{'='*80}");
+    Console.WriteLine($"[{timestamp}] MB TEMP BLOCK API REQUEST STARTED");
+    Console.WriteLine($"Request ID: {requestId}");
+    Console.WriteLine($"{'='*80}");
+    
+    try
+    {
+        // Step 1: Validate inputs
+        Console.WriteLine($"\n[{timestamp}] STEP 1: Validating inputs");
+        if (string.IsNullOrEmpty(mobileNumber) || string.IsNullOrEmpty(requestId) || string.IsNullOrEmpty(reason))
+        {
+            Console.WriteLine($"  ERROR: Missing required parameters");
+            Console.WriteLine($"  Mobile Number: {mobileNumber ?? "missing"}");
+            Console.WriteLine($"  Call ID: {requestId ?? "missing"}");
+            Console.WriteLine($"  Reason: {reason ?? "missing"}");
+            return Results.BadRequest(new { error = "Mobile number, call ID, and reason are required" });
+        }
+        
+        Console.WriteLine($"  Mobile Number: {mobileNumber} (length: {mobileNumber.Length})");
+        Console.WriteLine($"  Call ID: {requestId}");
+        Console.WriteLine($"  Reason: {reason}");
+        Console.WriteLine($"  Test Mode: {testMode}");
+        
+        // Step 2: Load configuration
+        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        Console.WriteLine($"\n[{timestamp}] STEP 2: Loading configuration");
+        string channelCode = configuration["MBBlock:ChannelCode"] ?? "21";
+        string channel = configuration["MBBlock:Channel"] ?? "CISCO";
+        string clientId = configuration["MBBlock:ClientId"] ?? "900001";
+        string baseKey = configuration["MBBlock:EncryptionBaseKey"] ?? "MBBOB12#";
+        string hashKey = configuration["MBBlock:HashKey"] ?? "MB@nking";
+        string tempBlockUrl = configuration["MBBlock:TempBlockUrl"] ?? "http://10.255.234.21:2000/mb/mbTempBlock";
+        string tokenUrl = configuration["MBBlock:TokenUrl"] ?? "http://10.255.233.28:2000/token";
+        string username = configuration["MBBlock:Username"] ?? "test1";
+        string password = configuration["MBBlock:Password"] ?? "test1@123";
+        
+        Console.WriteLine($"  Channel Code: {channelCode}");
+        Console.WriteLine($"  Channel: {channel}");
+        Console.WriteLine($"  Client ID: {clientId}");
+        Console.WriteLine($"  Base Key: {baseKey}");
+        Console.WriteLine($"  Hash Key: {hashKey}");
+        Console.WriteLine($"  Temp Block URL: {tempBlockUrl}");
+        Console.WriteLine($"  Token URL: {tokenUrl}");
+        Console.WriteLine($"  Username: {username}");
+        Console.WriteLine($"  Password: {new string('*', password.Length)}");
+        
+        // Step 3: Create JSON payload
+        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        Console.WriteLine($"\n[{timestamp}] STEP 3: Creating JSON payload");
+        var payloadObject = new
+        {
+            channel_CODE = channelCode,
+            mobile_NUMBER = mobileNumber,
+            reason = reason
+        };
+        string jsonPayload = JsonSerializer.Serialize(payloadObject);
+        Console.WriteLine($"  JSON Payload: {jsonPayload}");
+        Console.WriteLine($"  Payload Length: {jsonPayload.Length} bytes");
+        
+        // Step 4: Generate encryption key
+        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        Console.WriteLine($"\n[{timestamp}] STEP 4: Generating encryption key");
+        string encryptionKey = EncryptionUtils.GetEncryptionKey(baseKey);
+        Console.WriteLine($"  Encryption Key: {encryptionKey}");
+        Console.WriteLine($"  Key Length: {encryptionKey.Length} characters");
+        
+        // Step 5: Encrypt payload
+        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        Console.WriteLine($"\n[{timestamp}] STEP 5: Encrypting payload");
+        Console.WriteLine($"  Algorithm: AES-256-GCM");
+        string encryptedData = EncryptionUtils.Encrypt(jsonPayload, encryptionKey);
+        Console.WriteLine($"  Encrypted Data (Base64): {encryptedData}");
+        Console.WriteLine($"  Encrypted Length: {encryptedData.Length} characters");
+        
+        // Step 6: Generate HMAC hash
+        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        Console.WriteLine($"\n[{timestamp}] STEP 6: Generating HMAC hash");
+        Console.WriteLine($"  Hash Algorithm: HMAC-SHA256");
+        Console.WriteLine($"  Hash Key: {hashKey}");
+        string hash = EncryptionUtils.GetHmac(encryptedData, hashKey);
+        Console.WriteLine($"  Hash (Hex): {hash}");
+        Console.WriteLine($"  Hash Length: {hash.Length} characters");
+        
+        // Step 7: Build request payload
+        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        Console.WriteLine($"\n[{timestamp}] STEP 7: Building request payload");
+        var requestPayload = new
+        {
+            requestId = requestId,
+            channel = channel,
+            data = new
+            {
+                encData = encryptedData,
+                hash = hash,
+                clientId = clientId
+            }
+        };
+        string requestJson = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { WriteIndented = true });
+        Console.WriteLine($"  Request Payload:");
+        Console.WriteLine(requestJson);
+        
+        // If test mode, return simulated response
+        if (testMode)
+        {
+            timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            Console.WriteLine($"\n[{timestamp}] TEST MODE: Skipping API calls, returning simulated response");
+            Console.WriteLine($"\n[{timestamp}] REQUEST COMPLETED (TEST MODE)");
+            Console.WriteLine($"{'='*80}\n");
+            
+            return Results.Ok(new
+            {
+                success = true,
+                response = new
+                {
+                    status = "SUCCESS",
+                    blockStatus = "TEMPORARILY_BLOCKED",
+                    responseCode = "00",
+                    responseMessage = "Mobile number temporarily blocked"
+                },
+                statusCode = 200
+            });
+        }
+        
+        // Step 8: Generate authentication token
+        using var httpClient = new HttpClient();
+        httpClient.Timeout = TimeSpan.FromSeconds(30);
+        
+        string authToken = "";
+        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        Console.WriteLine($"\n[{timestamp}] STEP 8: Generating authentication token");
+        Console.WriteLine($"  Token URL: {tokenUrl}");
+        Console.WriteLine($"  Username: {username}");
+        Console.WriteLine($"  Password: {new string('*', password.Length)}");
+        
+        try
+        {
+            var tokenPayload = new
+            {
+                username = username,
+                password = password
+            };
+            var tokenContent = new StringContent(
+                JsonSerializer.Serialize(tokenPayload),
+                System.Text.Encoding.UTF8,
+                "application/json"
+            );
+            
+            var tokenStartTime = DateTime.UtcNow;
+            Console.WriteLine($"  Sending token request at {tokenStartTime:yyyy-MM-dd HH:mm:ss.fff}");
+            
+            var tokenResponse = await httpClient.PostAsync(tokenUrl, tokenContent);
+            var tokenElapsed = (DateTime.UtcNow - tokenStartTime).TotalMilliseconds;
+            
+            Console.WriteLine($"  Token response received in {tokenElapsed}ms");
+            Console.WriteLine($"  Token Status Code: {(int)tokenResponse.StatusCode}");
+            
+            var tokenResponseBody = await tokenResponse.Content.ReadAsStringAsync();
+            Console.WriteLine($"  Token Response: {tokenResponseBody}");
+            
+            if (tokenResponse.IsSuccessStatusCode)
+            {
+                var tokenData = JsonSerializer.Deserialize<JsonElement>(tokenResponseBody);
+                if (tokenData.TryGetProperty("token", out var tokenElement))
+                {
+                    authToken = tokenElement.GetString() ?? "";
+                }
+                else if (tokenData.TryGetProperty("access_token", out var accessTokenElement))
+                {
+                    authToken = accessTokenElement.GetString() ?? "";
+                }
+                
+                if (!string.IsNullOrEmpty(authToken))
+                {
+                    Console.WriteLine($"  Token extracted successfully");
+                    Console.WriteLine($"  Token length: {authToken.Length} characters");
+                    Console.WriteLine($"  Token (first 20 chars): {authToken.Substring(0, Math.Min(20, authToken.Length))}...");
+                }
+                else
+                {
+                    Console.WriteLine($"  WARNING: Token field not found in response");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"  ERROR: Token generation failed with status {tokenResponse.StatusCode}");
+            }
+        }
+        catch (Exception tokenEx)
+        {
+            Console.WriteLine($"  ERROR during token generation: {tokenEx.Message}");
+            Console.WriteLine($"  Continuing without token...");
+        }
+        
+        // Step 9: Call temp block API with token
+        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        Console.WriteLine($"\n[{timestamp}] STEP 9: Calling temp block API");
+        Console.WriteLine($"  Temp Block URL: {tempBlockUrl}");
+        Console.WriteLine($"  Authorization: {(!string.IsNullOrEmpty(authToken) ? "Bearer token included" : "No token")}");
+        
+        var content = new StringContent(
+            JsonSerializer.Serialize(requestPayload),
+            System.Text.Encoding.UTF8,
+            "application/json"
+        );
+        
+        // Add authorization token if available
+        if (!string.IsNullOrEmpty(authToken))
+        {
+            httpClient.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authToken);
+            Console.WriteLine($"  Authorization header set with bearer token");
+        }
+        
+        var apiStartTime = DateTime.UtcNow;
+        Console.WriteLine($"  Sending temp block request at {apiStartTime:yyyy-MM-dd HH:mm:ss.fff}");
+        
+        var apiResponse = await httpClient.PostAsync(tempBlockUrl, content);
+        var apiElapsed = (DateTime.UtcNow - apiStartTime).TotalMilliseconds;
+        
+        Console.WriteLine($"  Temp block response received in {apiElapsed}ms");
+        
+        // Step 10: Process response
+        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        Console.WriteLine($"\n[{timestamp}] STEP 10: Processing temp block response");
+        
+        int statusCode = (int)apiResponse.StatusCode;
+        string responseBody = await apiResponse.Content.ReadAsStringAsync();
+        
+        Console.WriteLine($"  Status Code: {statusCode}");
+        Console.WriteLine($"  Response Body: {responseBody}");
+        Console.WriteLine($"  Response Length: {responseBody.Length} characters");
+        
+        // Step 11: Decrypt the data.response field if present
+        Console.WriteLine($"\n[{timestamp}] STEP 11: Processing response and decrypting data.response field");
+        object decryptedResponse = responseBody;
+        
+        try
+        {
+            var responseJson = JsonSerializer.Deserialize<JsonElement>(responseBody);
+            
+            if (responseJson.TryGetProperty("data", out var dataElement) && 
+                dataElement.TryGetProperty("response", out var responseElement))
+            {
+                var encryptedResponseData = responseElement.GetString();
+                if (!string.IsNullOrEmpty(encryptedResponseData))
+                {
+                    Console.WriteLine($"  Found encrypted data.response field");
+                    Console.WriteLine($"  Decrypting data.response using encryption key: {encryptionKey}");
+                    var decryptedData = EncryptionUtils.Decrypt(encryptedResponseData, encryptionKey);
+                    Console.WriteLine($"  Decryption successful!");
+                    Console.WriteLine($"  Decrypted data: {decryptedData}");
+                    
+                    try
+                    {
+                        var decryptedJson = JsonSerializer.Deserialize<JsonElement>(decryptedData);
+                        decryptedResponse = decryptedJson;
+                        Console.WriteLine($"  Decrypted data is valid JSON");
+                    }
+                    catch
+                    {
+                        decryptedResponse = decryptedData;
+                        Console.WriteLine($"  Decrypted data is plain text");
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine($"  No encrypted data.response field found");
+                Console.WriteLine($"  Returning original response");
+            }
+        }
+        catch (Exception decryptEx)
+        {
+            Console.WriteLine($"  ERROR during decryption: {decryptEx.Message}");
+            decryptedResponse = responseBody;
+        }
+        
+        Console.WriteLine($"\n[{timestamp}] REQUEST COMPLETED");
+        Console.WriteLine($"  Success: {apiResponse.IsSuccessStatusCode}");
+        Console.WriteLine($"{'='*80}\n");
+        
+        return Results.Ok(new
+        {
+            success = true,
+            response = decryptedResponse,
+            statusCode = statusCode
+        });
+    }
+    catch (Exception ex)
+    {
+        var errorTimestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        Console.WriteLine($"\n[{errorTimestamp}] *** ERROR OCCURRED ***");
+        Console.WriteLine($"  Request ID: {requestId}");
+        Console.WriteLine($"  Error Message: {ex.Message}");
+        Console.WriteLine($"  Exception Type: {ex.GetType().Name}");
+        Console.WriteLine($"  Stack Trace: {ex.StackTrace}");
+        if (ex.InnerException != null)
+        {
+            Console.WriteLine($"  Inner Exception: {ex.InnerException.Message}");
+        }
+        Console.WriteLine($"{'='*80}\n");
+        
+        return Results.Ok(new
+        {
+            success = false,
+            error = ex.Message
+        });
+    }
+});
+
 app.Run();
 
 // Request models for encrypt/decrypt
